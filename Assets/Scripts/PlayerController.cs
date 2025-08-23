@@ -3,6 +3,7 @@ using UnityEngine;
 using UnityEngine.InputSystem;
 using UnityEngine.UI;
 
+[RequireComponent(typeof(Rigidbody))]
 public class PlayerController : MonoBehaviour
 {
     private float movementX;
@@ -14,6 +15,11 @@ public class PlayerController : MonoBehaviour
     private int score;
 
     public TextMeshProUGUI resultText;
+    public GameObject resultPanel;
+
+    private bool? isWin;
+
+    public Button retryButton;
 
     // Start is called once before the first execution of Update after the MonoBehaviour is created
     void Start()
@@ -21,6 +27,11 @@ public class PlayerController : MonoBehaviour
         rb = GetComponent<Rigidbody>();
         scoreText.text = "Score: 0";
         resultText.gameObject.SetActive(false);
+        resultPanel.SetActive(false);
+        retryButton.onClick.AddListener(() =>
+        {
+            UnityEngine.SceneManagement.SceneManager.LoadScene(UnityEngine.SceneManagement.SceneManager.GetActiveScene().name);
+        });
     }
 
     // Update is called once per frame
@@ -31,6 +42,7 @@ public class PlayerController : MonoBehaviour
 
     void OnMove(InputValue movementValue)
     {
+        if (isWin == true) return;
         Vector2 movementVector = movementValue.Get<Vector2>();
         movementX = movementVector.x;
         movementY = movementVector.y;
@@ -38,7 +50,22 @@ public class PlayerController : MonoBehaviour
 
     private void FixedUpdate()
     {
-        Vector3 movement = new Vector3(movementX, 0, movementY);
+        if (isWin == true)
+        {
+            rb.AddForce(Vector3.zero);
+            // remove acceleration
+            rb.linearVelocity = Vector3.zero;
+            return;
+        }
+
+        if (transform.position.y < -10)
+        {
+            gameObject.SetActive(false);
+            showResult(false);
+            return;
+        }
+
+        Vector3 movement = new(movementX, 0, movementY);
         rb.AddForce(movement * speed);
     }
 
@@ -57,9 +84,8 @@ public class PlayerController : MonoBehaviour
         scoreText.text = "Score: " + score;
         if (score >= 12)
         {
-            resultText.gameObject.SetActive(true);
-            resultText.text = "You Win!";
-            Destroy(GameObject.FindGameObjectWithTag("Enemy"));
+            showResult(true);
+            GameObject.FindGameObjectWithTag("Enemy").SetActive(false);
         }
     }
 
@@ -67,10 +93,16 @@ public class PlayerController : MonoBehaviour
     {
         if (collision.gameObject.CompareTag("Enemy"))
         {
-            Destroy(gameObject);
-            resultText.gameObject.SetActive(true);
-            resultText.text = "You Lose!";
-            resultText.color = Color.red;
+            gameObject.SetActive(false);
+            showResult(false);
         }
+    }
+
+    void showResult(bool isWin)
+    {
+        resultText.gameObject.SetActive(true);
+        resultText.text = isWin ? "You Win!" : "You Lose!";
+        resultPanel.SetActive(true);
+        this.isWin = isWin;
     }
 }
